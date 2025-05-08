@@ -1,11 +1,12 @@
 # parser.py
 
 import os
-import openai
 import json
 import pandas as pd
+from openai import OpenAI
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize the new OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Build prompt using few-shot examples
 def build_prompt(message):
@@ -34,44 +35,44 @@ def build_prompt(message):
 
 # Alias replacement helper
 def apply_aliases(text, alias_df):
-    # work in lowercase for matching
     cleaned = text.lower()
     for _, row in alias_df.iterrows():
         raw_alias = row.get("Alias", "")
         raw_sku   = row.get("SKU", "")
-        # skip if alias cell is empty or not a string
         if not isinstance(raw_alias, str) or not raw_alias.strip():
             continue
         alias = raw_alias.lower().strip()
-        sku   = str(raw_sku).strip()  # ensure SKU is a string
-        # replace all occurrences of that alias
+        sku   = str(raw_sku).strip()
         if alias in cleaned:
             cleaned = cleaned.replace(alias, sku.lower())
     return cleaned
 
 # Main parser function
 def parse_message(message, alias_df, price_df):
+    # 1) apply your alias substitutions
     cleaned_input = apply_aliases(message, alias_df)
+    # 2) build and send the prompt
     prompt = build_prompt(cleaned_input)
-
-    response = openai.ChatCompletion.create(
+    resp = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "system", "content": prompt}],
         temperature=0
     )
-
-    parsed = json.loads(response.choices[0].message.content)
+    # 3) parse JSON output
+    parsed = json.loads(resp.choices[0].message.content)
+    # 4) attach slab & box_qty info to each item
     for item in parsed:
         sku = item["sku"]
         qty = int(item["qty"])
         row = price_df[price_df["NAME IN TALLY"] == sku]
         if not row.empty:
             item["slabs"] = {
-                "20pcs": row.iloc[0]["Category A Pricing"],
-                "100pc": row.iloc[0]["Unnamed: 16"],
-                "1box": row.iloc[0]["Unnamed: 17"],
-                "4box": row.iloc[0]["Unnamed: 18"]
+                "20pcs":  row.iloc[0]["Category A Pricing"],
+                "100pc":  row.iloc[0]["Unnamed: 16"],
+                "1box":   row.iloc[0]["Unnamed: 17"],
+                "4box":   row.iloc[0]["Unnamed: 18"]
             }
             box_qty = row.iloc[0]["Qty/ Box"]
             item["box_qty"] = int(box_qty) if pd.notna(box_qty) else None
     return parsed
+
