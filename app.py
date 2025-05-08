@@ -8,7 +8,7 @@ import pandas as pd
 # --- Load Data ---
 @st.cache_data
 def load_data():
-    df = pd.read_csv("price_sheet.csv", sheet_name="Doctor Wiper")
+    df = pd.read_excel("price_sheet.xlsx", sheet_name="Doctor Wiper")
     alias_df = pd.read_csv("alias.csv")
     return df, alias_df
 
