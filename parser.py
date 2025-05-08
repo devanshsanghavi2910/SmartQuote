@@ -34,11 +34,20 @@ def build_prompt(message):
 
 # Alias replacement helper
 def apply_aliases(text, alias_df):
+    # work in lowercase for matching
+    cleaned = text.lower()
     for _, row in alias_df.iterrows():
-        alias, sku = row["Alias"].lower(), row["SKU"]
-        if alias in text.lower():
-            text = text.lower().replace(alias, sku)
-    return text
+        raw_alias = row.get("Alias", "")
+        raw_sku   = row.get("SKU", "")
+        # skip if alias cell is empty or not a string
+        if not isinstance(raw_alias, str) or not raw_alias.strip():
+            continue
+        alias = raw_alias.lower().strip()
+        sku   = str(raw_sku).strip()  # ensure SKU is a string
+        # replace all occurrences of that alias
+        if alias in cleaned:
+            cleaned = cleaned.replace(alias, sku.lower())
+    return cleaned
 
 # Main parser function
 def parse_message(message, alias_df, price_df):
