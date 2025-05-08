@@ -76,3 +76,4 @@ def parse_message(message, alias_df, price_df):
             item["box_qty"] = int(box_qty) if pd.notna(box_qty) else None
     return parsed
 
+
