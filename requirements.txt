@@ -2,4 +2,4 @@
  openai
  pandas
  python-dotenv
-+openpyxl
+ openpyxl
